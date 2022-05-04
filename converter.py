@@ -115,7 +115,7 @@ class WaymoToKITTI(object):
             self.save_lidar(frame, file_idx, frame_idx, ignore_second=True, use_only_top=True)
 
             # parse label files
-            self.save_label(frame, file_idx, frame_idx)
+            # self.save_label(frame, file_idx, frame_idx)
 
             # parse pose files
             self.save_pose(frame, file_idx, frame_idx)
