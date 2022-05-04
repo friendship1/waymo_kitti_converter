@@ -112,7 +112,7 @@ class WaymoToKITTI(object):
             self.save_calib(frame, file_idx, frame_idx)
 
             # parse point clouds
-            self.save_lidar(frame, file_idx, frame_idx)
+            self.save_lidar(frame, file_idx, frame_idx, ignore_second=True, use_only_top=True)
 
             # parse label files
             self.save_label(frame, file_idx, frame_idx)
@@ -238,7 +238,7 @@ class WaymoToKITTI(object):
         with open(self.calib_save_dir + '/' + self.prefix + str(file_idx).zfill(3) + str(frame_idx).zfill(3) + '.txt', 'w+') as fp_calib:
             fp_calib.write(calib_context)
 
-    def save_lidar(self, frame, file_idx, frame_idx):
+    def save_lidar(self, frame, file_idx, frame_idx, ignore_second=False, use_only_top=False):
         """ parse and save the lidar data in psd format
                 :param frame: open dataset frame proto
                 :param file_idx: the current file number
@@ -251,24 +251,31 @@ class WaymoToKITTI(object):
             range_images,
             camera_projections,
             range_image_top_pose,
-            ri_index=0
+            ri_index=0,
+            use_only_top=use_only_top
         )
         points_0 = np.concatenate(points_0, axis=0)
         intensity_0 = np.concatenate(intensity_0, axis=0)
+        
 
-        points_1, cp_points_1, intensity_1 = self.convert_range_image_to_point_cloud(
-            frame,
-            range_images,
-            camera_projections,
-            range_image_top_pose,
-            ri_index=1
-        )
-        points_1 = np.concatenate(points_1, axis=0)
-        intensity_1 = np.concatenate(intensity_1, axis=0)
+        if ignore_second:
+            points = points_0
+            intensity = intensity_0
+        else:
+            points_1, cp_points_1, intensity_1 = self.convert_range_image_to_point_cloud(
+                frame,
+                range_images,
+                camera_projections,
+                range_image_top_pose,
+                ri_index=1,
+                use_only_top=use_only_top
+            )
+            points_1 = np.concatenate(points_1, axis=0)
+            intensity_1 = np.concatenate(intensity_1, axis=0)
 
-        points = np.concatenate([points_0, points_1], axis=0)
-        # print('points_0', points_0.shape, 'points_1', points_1.shape, 'points', points.shape)
-        intensity = np.concatenate([intensity_0, intensity_1], axis=0)
+            points = np.concatenate([points_0, points_1], axis=0)
+            # print('points_0', points_0.shape, 'points_1', points_1.shape, 'points', points.shape)
+            intensity = np.concatenate([intensity_0, intensity_1], axis=0)
         # points = points_1
         # intensity = intensity_1
 
@@ -469,7 +476,8 @@ class WaymoToKITTI(object):
                                            range_images,
                                            camera_projections,
                                            range_image_top_pose,
-                                           ri_index=0):
+                                           ri_index=0,
+                                           use_only_top=False):
         """Convert range images to point cloud.
         Args:
           frame: open dataset frame
@@ -505,6 +513,9 @@ class WaymoToKITTI(object):
             range_image_top_pose_tensor_rotation,
             range_image_top_pose_tensor_translation)
         for c in calibrations:
+            if use_only_top == True:
+                if c.name != dataset_pb2.LaserName.TOP:
+                    continue
             range_image = range_images[c.name][ri_index]
             if len(c.beam_inclinations) == 0:  # pylint: disable=g-explicit-length-test
                 beam_inclinations = range_image_utils.compute_inclination(
