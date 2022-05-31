@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Convert.py",
+            "type": "python",
+            "request": "launch",
+            "program": "converter.py",
+            "cwd": "${workspaceFolder}",
+            // python converter.py waymo_data/validation waymo_kitti_data/validation3 --num_proc 8
+            "args": [
+                "waymo_data/validation",
+                "waymo_kitti_data/validation_debug", 
+                "--num_proc", "1",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

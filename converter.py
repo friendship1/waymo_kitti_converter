@@ -29,7 +29,7 @@ filter_empty_3dboxes = False
 
 # There is no bounding box annotations in the No Label Zone (NLZ)
 # if set True, points in the NLZ are filtered
-filter_no_label_zone_points = True
+filter_no_label_zone_points = False
 
 
 # Only bounding boxes of certain classes are converted
@@ -112,7 +112,7 @@ class WaymoToKITTI(object):
             self.save_calib(frame, file_idx, frame_idx)
 
             # parse point clouds
-            self.save_lidar(frame, file_idx, frame_idx, ignore_second=True, use_only_top=True)
+            # self.save_lidar(frame, file_idx, frame_idx, ignore_second=True, use_only_top=True)
 
             # parse label files
             # self.save_label(frame, file_idx, frame_idx)
@@ -206,6 +206,16 @@ class WaymoToKITTI(object):
 
                 break
 
+        for c in frame.context.laser_calibrations:
+            if c.name == open_dataset.LaserName.TOP:
+                extrinsic = np.reshape(np.array(c.extrinsic.transform), [4, 4])
+                inv_extrinsic = tf.linalg.inv(extrinsic)
+                # [B, 3, 3]
+                inv_rotation = inv_extrinsic[..., 0:3, 0:3]
+                # [B, 1, 3]
+                inv_translation = tf.expand_dims(tf.expand_dims(inv_extrinsic[..., 0:3, 3], 1), 1)
+                break
+
         # print('front_cam_intrinsic\n', front_cam_intrinsic)
 
         self.T_front_cam_to_ref = T_front_cam_to_ref.copy()
@@ -229,11 +239,13 @@ class WaymoToKITTI(object):
         calib_context += "R0_rect" + ": " + " ".join(['{}'.format(i) for i in np.eye(3).astype(np.float32).flatten()]) + '\n'
 
         Tr_velo_to_cam = self.cart_to_homo(T_front_cam_to_ref) @ np.linalg.inv(T_front_cam_to_vehicle)
+        Tr_lidar_extrinsic = extrinsic
         # print('T_front_cam_to_vehicle\n', T_front_cam_to_vehicle)
         # print('np.linalg.inv(T_front_cam_to_vehicle)\n', np.linalg.inv(T_front_cam_to_vehicle))
         # print('cart_to_homo(T_front_cam_to_ref)\n', cart_to_homo(T_front_cam_to_ref))
         # print('Tr_velo_to_cam\n',Tr_velo_to_cam)
         calib_context += "Tr_velo_to_cam" + ": " + " ".join(['{}'.format(i) for i in Tr_velo_to_cam[:3, :].reshape(12)]) + '\n'
+        calib_context += "Tr_lidar_to_vehicle" + ": " + " ".join(['{}'.format(i) for i in Tr_lidar_extrinsic[:3, :].reshape(12)]) + '\n'
 
         with open(self.calib_save_dir + '/' + self.prefix + str(file_idx).zfill(3) + str(frame_idx).zfill(3) + '.txt', 'w+') as fp_calib:
             fp_calib.write(calib_context)
